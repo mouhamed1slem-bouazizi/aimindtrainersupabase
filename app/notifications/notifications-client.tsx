@@ -5,14 +5,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Bell, Calendar, Award, MessageSquare, Zap, Trash2 } from "lucide-react"
 import { useState } from "react"
-import { Suspense } from "react"
-import NotificationsClient from "./notifications-client"
-import Loading from "./loading"
 
-// Disable static generation for this page
-export const dynamic = "force-dynamic"
-
-const NotificationsPageComponent = () => {
+export default function NotificationsClient() {
   const { notifications, markAsRead, markAllAsRead, clearNotification } = useNotifications()
   const [filter, setFilter] = useState<string | null>(null)
 
@@ -131,13 +125,5 @@ const NotificationsPageComponent = () => {
         )}
       </div>
     </div>
-  )
-}
-
-export default function NotificationsPage() {
-  return (
-    <Suspense fallback={<Loading />}>
-      <NotificationsClient />
-    </Suspense>
   )
 }
