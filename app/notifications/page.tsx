@@ -4,18 +4,52 @@ import { useNotifications } from "@/context/notification-context"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Bell, Calendar, Award, MessageSquare, Zap, Trash2 } from "lucide-react"
-import { useState } from "react"
-import { Suspense } from "react"
-import NotificationsClient from "./notifications-client"
+import { useState, useEffect } from "react"
 import Loading from "./loading"
 
-// Disable static generation for this page
+// Disable static generation
 export const dynamic = "force-dynamic"
 
-const NotificationsPageComponent = () => {
-  const { notifications, markAsRead, markAllAsRead, clearNotification } = useNotifications()
+export default function NotificationsPage() {
+  const [mounted, setMounted] = useState(false)
   const [filter, setFilter] = useState<string | null>(null)
+  const notificationContext = useNotifications()
 
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return <Loading />
+  }
+
+  return (
+    <NotificationsClient
+      filter={filter}
+      setFilter={setFilter}
+      notifications={notificationContext.notifications}
+      markAsRead={notificationContext.markAsRead}
+      markAllAsRead={notificationContext.markAllAsRead}
+      clearNotification={notificationContext.clearNotification}
+    />
+  )
+}
+
+function NotificationsClient({
+  filter,
+  setFilter,
+  notifications,
+  markAsRead,
+  markAllAsRead,
+  clearNotification,
+}: {
+  filter: string | null
+  setFilter: (filter: string | null) => void
+  notifications: any[]
+  markAsRead: (id: string) => void
+  markAllAsRead: () => void
+  clearNotification: (id: string) => void
+}) {
   const filteredNotifications = filter ? notifications.filter((n) => n.type === filter) : notifications
 
   const getIcon = (type: string) => {
@@ -131,13 +165,5 @@ const NotificationsPageComponent = () => {
         )}
       </div>
     </div>
-  )
-}
-
-export default function NotificationsPage() {
-  return (
-    <Suspense fallback={<Loading />}>
-      <NotificationsClient />
-    </Suspense>
   )
 }
