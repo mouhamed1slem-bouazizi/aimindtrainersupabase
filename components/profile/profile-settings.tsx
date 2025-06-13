@@ -1,25 +1,64 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { User, Lock, Moon } from "lucide-react"
 import { useUser } from "@/context/user-context"
-import { useState } from "react"
 import { toast } from "@/components/ui/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export function ProfileSettings() {
-  const { user, updateProfile, updatePreferences } = useUser()
+  const userContext = useUser()
+  const [mounted, setMounted] = useState(false)
+  const [user, setUser] = useState<any>(null)
+  const [updateProfile, setUpdateProfile] = useState<((profile: any) => Promise<void>) | null>(null)
+  const [updatePreferences, setUpdatePreferences] = useState<((prefs: any) => Promise<void>) | null>(null)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (mounted) {
+      setUser(userContext.user)
+      setUpdateProfile(() => userContext.updateProfile)
+      setUpdatePreferences(() => userContext.updatePreferences)
+    }
+  }, [mounted])
 
   const [profile, setProfile] = useState({
-    name: user?.name || "",
-    email: user?.email || "",
+    name: "",
+    email: "",
   })
 
-  const [theme, setTheme] = useState(user?.preferences.theme || "system")
-  const [language, setLanguage] = useState(user?.preferences.language || "en")
+  const [theme, setTheme] = useState("system")
+  const [language, setLanguage] = useState("en")
+
+  // Update profile when user data is available
+  useEffect(() => {
+    if (user) {
+      setProfile({
+        name: user.name || "",
+        email: user.email || "",
+      })
+      setTheme(user.preferences?.theme || "system")
+      setLanguage(user.preferences?.language || "en")
+    }
+  }, [user])
+
+  // Show loading state until mounted
+  if (!mounted) {
+    return (
+      <div className="space-y-6">
+        <div className="h-40 bg-muted rounded animate-pulse"></div>
+        <div className="h-48 bg-muted rounded animate-pulse"></div>
+        <div className="h-32 bg-muted rounded animate-pulse"></div>
+      </div>
+    )
+  }
 
   const handleProfileChange = (key: string, value: string) => {
     setProfile((prev) => ({
@@ -30,11 +69,13 @@ export function ProfileSettings() {
 
   const handleSaveProfile = async () => {
     try {
-      await updateProfile(profile)
-      toast({
-        title: "Profile updated",
-        description: "Your profile information has been saved.",
-      })
+      if (updateProfile) {
+        await updateProfile(profile)
+        toast({
+          title: "Profile updated",
+          description: "Your profile information has been saved.",
+        })
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -46,11 +87,13 @@ export function ProfileSettings() {
 
   const handleSavePreferences = async () => {
     try {
-      await updatePreferences({ theme: theme as any, language })
-      toast({
-        title: "Preferences updated",
-        description: "Your app preferences have been saved.",
-      })
+      if (updatePreferences) {
+        await updatePreferences({ theme: theme as any, language })
+        toast({
+          title: "Preferences updated",
+          description: "Your app preferences have been saved.",
+        })
+      }
     } catch (error) {
       toast({
         title: "Error",

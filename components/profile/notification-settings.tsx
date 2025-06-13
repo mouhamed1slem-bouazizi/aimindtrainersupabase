@@ -1,28 +1,68 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Bell, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useUser } from "@/context/user-context"
-import { useState } from "react"
 import { toast } from "@/components/ui/use-toast"
 
 export function NotificationSettings() {
-  const { user, updatePreferences } = useUser()
+  const [mounted, setMounted] = useState(false)
+  const [user, setUser] = useState<any>(null)
+  const [updatePreferences, setUpdatePreferences] = useState<((prefs: any) => Promise<void>) | null>(null)
+  const userContext = useUser()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (mounted) {
+      setUser(userContext.user)
+      setUpdatePreferences(() => userContext.updatePreferences)
+    }
+  }, [mounted])
 
   const [preferences, setPreferences] = useState({
-    reminders: user?.preferences.reminders || false,
-    morningReminder: user?.preferences.morningReminder || "08:00",
-    eveningReminder: user?.preferences.eveningReminder || "19:00",
+    reminders: false,
+    morningReminder: "08:00",
+    eveningReminder: "19:00",
     notifications: {
-      training: user?.preferences.notifications.training || false,
-      achievements: user?.preferences.notifications.achievements || false,
-      weeklyReports: user?.preferences.notifications.weeklyReports || false,
-      coachTips: user?.preferences.notifications.coachTips || false,
+      training: false,
+      achievements: false,
+      weeklyReports: false,
+      coachTips: false,
     },
   })
+
+  useEffect(() => {
+    if (user?.preferences) {
+      setPreferences({
+        reminders: user.preferences.reminders || false,
+        morningReminder: user.preferences.morningReminder || "08:00",
+        eveningReminder: user.preferences.eveningReminder || "19:00",
+        notifications: {
+          training: user.preferences.notifications?.training || false,
+          achievements: user.preferences.notifications?.achievements || false,
+          weeklyReports: user.preferences.notifications?.weeklyReports || false,
+          coachTips: user.preferences.notifications?.coachTips || false,
+        },
+      })
+    }
+  }, [user])
+
+  if (!mounted) {
+    return (
+      <div className="space-y-6">
+        <div className="h-32 bg-muted rounded animate-pulse"></div>
+        <div className="h-40 bg-muted rounded animate-pulse"></div>
+        <div className="h-10 bg-muted rounded animate-pulse"></div>
+      </div>
+    )
+  }
 
   const handleToggleChange = (key: string, value: boolean) => {
     if (key.includes(".")) {
@@ -51,11 +91,13 @@ export function NotificationSettings() {
 
   const handleSave = async () => {
     try {
-      await updatePreferences(preferences)
-      toast({
-        title: "Settings updated",
-        description: "Your notification preferences have been saved.",
-      })
+      if (updatePreferences) {
+        await updatePreferences(preferences)
+        toast({
+          title: "Settings updated",
+          description: "Your notification preferences have been saved.",
+        })
+      }
     } catch (error) {
       toast({
         title: "Error",
