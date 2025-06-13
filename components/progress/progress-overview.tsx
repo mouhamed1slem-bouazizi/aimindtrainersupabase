@@ -1,12 +1,62 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { useTraining } from "@/context/training-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Award, Brain, Calendar, Clock } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export function ProgressOverview() {
   const { currentStreak, completedGames, totalGames, domainScores } = useTraining()
+  const [mounted, setMounted] = useState(false)
+  const [trainingData, setTrainingData] = useState({
+    currentStreak: 0,
+    completedGames: 0,
+    totalGames: 0,
+    domainScores: {},
+  })
+
+  useEffect(() => {
+    setMounted(true)
+    setTrainingData({ currentStreak, completedGames, totalGames, domainScores })
+  }, [currentStreak, completedGames, totalGames, domainScores])
+
+  if (!mounted) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardContent className="p-4 flex items-center">
+                <Skeleton className="h-10 w-10 rounded-full mr-3" />
+                <div className="space-y-2">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-5 w-16" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Card>
+          <CardHeader className="pb-2">
+            <Skeleton className="h-5 w-32" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="space-y-1">
+                <div className="flex justify-between">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-12" />
+                </div>
+                <Skeleton className="h-2 w-full" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   const stats = [
     {
@@ -35,7 +85,6 @@ export function ProgressOverview() {
     },
   ]
 
-  // Get top 4 domains for progress display
   const topDomains = Object.entries(domainScores)
     .sort(([, a], [, b]) => b - a)
     .slice(0, 4)
