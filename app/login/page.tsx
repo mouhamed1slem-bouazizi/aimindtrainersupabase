@@ -1,11 +1,51 @@
-"use client"
+import { Suspense } from "react"
+import { Skeleton } from "@/components/ui/skeleton"
+
+// Prevent static generation
+export const dynamic = "force-dynamic"
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginSkeleton />}>
+      <LoginForm />
+    </Suspense>
+  )
+}
+
+function LoginSkeleton() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md">
+        <Skeleton className="h-10 w-3/4 mx-auto mb-6" />
+        <Skeleton className="h-4 w-2/3 mx-auto mb-8" />
+        <Skeleton className="h-12 w-full mb-4" />
+        <Skeleton className="h-12 w-full mb-4" />
+        <Skeleton className="h-4 w-32 mb-6" />
+        <Skeleton className="h-10 w-full mb-6" />
+        <div className="relative my-4">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <Skeleton className="h-4 w-24 bg-white px-2" />
+          </div>
+        </div>
+        <Skeleton className="h-10 w-full mb-6" />
+        <div className="flex justify-center">
+          <Skeleton className="h-4 w-48" />
+        </div>
+      </div>
+    </div>
+  )
+}
+// Client component with Supabase initialization
+;("use client")
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,15 +54,29 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/hooks/use-toast"
 import type { Database } from "@/types/supabase"
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [rememberMe, setRememberMe] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get("redirect") || "/"
   const { toast } = useToast()
+
+  // Only initialize Supabase after component mount
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  // Don't render anything until mounted
+  if (!isMounted) {
+    return null
+  }
+
+  // Safe import of Supabase client
+  const { createClientComponentClient } = require("@supabase/auth-helpers-nextjs")
   const supabase = createClientComponentClient<Database>()
 
   const handleLogin = async (e: React.FormEvent) => {
