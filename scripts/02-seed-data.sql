@@ -1,95 +1,60 @@
 -- Seed cognitive domains
-INSERT INTO cognitive_domains (name, description, icon) VALUES
-('Memory', 'The ability to encode, store, and recall information', 'brain'),
-('Attention', 'The ability to focus on specific stimuli while ignoring distractions', 'eye'),
-('Processing Speed', 'The speed at which you can understand and react to information', 'zap'),
-('Problem Solving', 'The ability to find solutions to difficult or complex issues', 'puzzle-piece'),
-('Flexibility', 'The ability to adapt to new situations and think about things in different ways', 'refresh-cw')
-ON CONFLICT (name) DO NOTHING;
-
--- Seed brain regions
-INSERT INTO brain_regions (name, description) VALUES
-('Prefrontal Cortex', 'Responsible for executive functions like planning and decision-making'),
-('Hippocampus', 'Critical for learning and memory formation'),
-('Amygdala', 'Processes emotions and emotional memories'),
-('Cerebellum', 'Coordinates movement and some cognitive functions'),
-('Parietal Lobe', 'Processes sensory information and spatial awareness')
-ON CONFLICT (name) DO NOTHING;
-
--- Seed games
-INSERT INTO games (name, description, instructions, thumbnail_url) VALUES
-('Memory Match', 'Test and improve your visual memory by matching pairs of cards', 'Click on cards to flip them and find matching pairs. Remember the positions to match all pairs as quickly as possible.', '/placeholder.svg?height=200&width=200'),
-('Attention Grid', 'Enhance your focus by finding specific targets in a grid of distractors', 'Find and click on all instances of the target symbol as quickly as possible while avoiding distractors.', '/placeholder.svg?height=200&width=200'),
-('Speed Sort', 'Improve processing speed by sorting items into categories quickly', 'Sort the falling objects into the correct categories by swiping left or right before they reach the bottom.', '/placeholder.svg?height=200&width=200'),
-('Logic Puzzles', 'Strengthen problem-solving skills with challenging puzzles', 'Solve the puzzle by arranging the pieces according to the given rules and constraints.', '/placeholder.svg?height=200&width=200'),
-('Pattern Switch', 'Develop cognitive flexibility by adapting to changing patterns', 'Respond to the changing patterns according to the rules. The rules will switch periodically, requiring you to adapt.', '/placeholder.svg?height=200&width=200')
+INSERT INTO cognitive_domains (name, description, icon)
+VALUES
+  ('Memory', 'The ability to encode, store, and recall information', 'brain'),
+  ('Attention', 'The ability to focus on specific stimuli while ignoring distractions', 'eye'),
+  ('Processing Speed', 'The ability to quickly perform cognitive tasks', 'zap'),
+  ('Executive Function', 'The ability to plan, organize, and complete tasks', 'layout-dashboard'),
+  ('Problem Solving', 'The ability to find solutions to complex problems', 'puzzle')
 ON CONFLICT DO NOTHING;
 
--- Link games to cognitive domains
-INSERT INTO game_domains (game_id, domain_id, impact_level) VALUES
-(1, 1, 5), -- Memory Match strongly impacts Memory
-(1, 2, 2), -- Memory Match moderately impacts Attention
-(2, 2, 5), -- Attention Grid strongly impacts Attention
-(2, 3, 3), -- Attention Grid moderately impacts Processing Speed
-(3, 3, 5), -- Speed Sort strongly impacts Processing Speed
-(3, 5, 2), -- Speed Sort moderately impacts Flexibility
-(4, 4, 5), -- Logic Puzzles strongly impacts Problem Solving
-(4, 1, 2), -- Logic Puzzles moderately impacts Memory
-(5, 5, 5), -- Pattern Switch strongly impacts Flexibility
-(5, 2, 3)  -- Pattern Switch moderately impacts Attention
-ON CONFLICT DO NOTHING;
+-- Get domain IDs
+DO $$
+DECLARE
+  memory_id UUID;
+  attention_id UUID;
+  processing_id UUID;
+  executive_id UUID;
+  problem_id UUID;
+BEGIN
+  SELECT id INTO memory_id FROM cognitive_domains WHERE name = 'Memory' LIMIT 1;
+  SELECT id INTO attention_id FROM cognitive_domains WHERE name = 'Attention' LIMIT 1;
+  SELECT id INTO processing_id FROM cognitive_domains WHERE name = 'Processing Speed' LIMIT 1;
+  SELECT id INTO executive_id FROM cognitive_domains WHERE name = 'Executive Function' LIMIT 1;
+  SELECT id INTO problem_id FROM cognitive_domains WHERE name = 'Problem Solving' LIMIT 1;
 
--- Link games to brain regions
-INSERT INTO game_brain_regions (game_id, region_id) VALUES
-(1, 2), -- Memory Match impacts Hippocampus
-(1, 5), -- Memory Match impacts Parietal Lobe
-(2, 1), -- Attention Grid impacts Prefrontal Cortex
-(2, 5), -- Attention Grid impacts Parietal Lobe
-(3, 1), -- Speed Sort impacts Prefrontal Cortex
-(3, 4), -- Speed Sort impacts Cerebellum
-(4, 1), -- Logic Puzzles impacts Prefrontal Cortex
-(4, 2), -- Logic Puzzles impacts Hippocampus
-(5, 1), -- Pattern Switch impacts Prefrontal Cortex
-(5, 4)  -- Pattern Switch impacts Cerebellum
-ON CONFLICT DO NOTHING;
+  -- Seed games
+  INSERT INTO games (name, description, instructions, difficulty_levels, domain_id)
+  VALUES
+    ('Memory Match', 'Test and improve your visual memory by matching pairs of cards', 'Click on cards to flip them and find matching pairs. Remember the positions to match all pairs as quickly as possible.', ARRAY['Easy', 'Medium', 'Hard'], memory_id),
+    ('Attention Spotlight', 'Enhance your selective attention by identifying targets among distractors', 'Tap on the target shapes as they appear among distractors. Be quick and accurate!', ARRAY['Easy', 'Medium', 'Hard'], attention_id),
+    ('Speed Sort', 'Improve your processing speed by sorting items into categories', 'Sort the items into their correct categories as quickly as possible. Swipe left or right to categorize.', ARRAY['Easy', 'Medium', 'Hard'], processing_id),
+    ('Task Manager', 'Strengthen your executive function by managing multiple tasks simultaneously', 'Complete multiple tasks according to their priority and deadline. Switch between tasks efficiently.', ARRAY['Easy', 'Medium', 'Hard'], executive_id),
+    ('Pattern Solver', 'Enhance your problem-solving skills by identifying patterns and relationships', 'Identify the pattern in the sequence and select the item that comes next.', ARRAY['Easy', 'Medium', 'Hard'], problem_id)
+  ON CONFLICT DO NOTHING;
 
--- Seed achievements
-INSERT INTO achievements (name, description, icon, criteria) VALUES
-('First Steps', 'Complete your first training session', 'award', '{"game_sessions": 1}'),
-('Memory Master', 'Score over 90% in a Memory Match game', 'brain', '{"game_id": 1, "min_score": 90}'),
-('Focus Champion', 'Complete 5 Attention Grid sessions', 'eye', '{"game_id": 2, "game_sessions": 5}'),
-('Speed Demon', 'Complete a Speed Sort game in under 60 seconds', 'zap', '{"game_id": 3, "max_duration": 60}'),
-('Problem Solver', 'Solve 10 Logic Puzzles', 'puzzle-piece', '{"game_id": 4, "game_sessions": 10}'),
-('Adaptable Mind', 'Switch between 3 different games in one day', 'refresh-cw', '{"unique_games_per_day": 3}'),
-('Consistency King', 'Maintain a 7-day streak', 'calendar', '{"min_streak": 7}'),
-('Cognitive Explorer', 'Try all available games at least once', 'compass', '{"try_all_games": true}')
-ON CONFLICT DO NOTHING;
+  -- Seed achievements
+  INSERT INTO achievements (name, description, icon)
+  VALUES
+    ('First Steps', 'Complete your first training session', 'baby'),
+    ('Memory Master', 'Achieve a perfect score in Memory Match on Hard difficulty', 'trophy'),
+    ('Focus Champion', 'Complete 10 Attention Spotlight sessions with 90% accuracy', 'target'),
+    ('Speed Demon', 'Sort 100 items in under 60 seconds in Speed Sort', 'timer'),
+    ('Multitasker', 'Successfully manage 5 tasks simultaneously in Task Manager', 'layers'),
+    ('Problem Solver', 'Solve 50 Pattern Solver puzzles', 'puzzle-piece'),
+    ('Daily Streak: 7 Days', 'Complete daily training for 7 consecutive days', 'calendar'),
+    ('Daily Streak: 30 Days', 'Complete daily training for 30 consecutive days', 'calendar-check'),
+    ('Cognitive Explorer', 'Try all available games at least once', 'compass'),
+    ('Brain Transformer', 'Improve scores in all cognitive domains by at least 20%', 'brain')
+  ON CONFLICT DO NOTHING;
 
--- Seed training plans
-INSERT INTO training_plans (name, description, duration_days) VALUES
-('Memory Boost', 'A 7-day plan focused on improving memory', 7),
-('Attention Builder', 'A 7-day plan to enhance focus and attention', 7),
-('Speed Training', 'A 7-day plan to improve processing speed', 7),
-('Problem Solving Challenge', 'A 14-day plan for developing problem-solving skills', 14),
-('Cognitive Flexibility Program', 'A 14-day plan to improve adaptability and flexibility', 14),
-('All-Around Cognitive Enhancement', 'A 30-day comprehensive plan targeting all cognitive domains', 30)
-ON CONFLICT DO NOTHING;
-
--- Link training plans to games
-INSERT INTO training_plan_games (plan_id, game_id, day_number) VALUES
--- Memory Boost plan
-(1, 1, 1), (1, 1, 2), (1, 1, 3), (1, 4, 4), (1, 1, 5), (1, 1, 6), (1, 1, 7),
--- Attention Builder plan
-(2, 2, 1), (2, 2, 2), (2, 2, 3), (2, 5, 4), (2, 2, 5), (2, 2, 6), (2, 2, 7),
--- Speed Training plan
-(3, 3, 1), (3, 3, 2), (3, 3, 3), (3, 2, 4), (3, 3, 5), (3, 3, 6), (3, 3, 7)
-ON CONFLICT DO NOTHING;
-
--- Seed insights
-INSERT INTO insights (title, content, source) VALUES
-('The Spacing Effect', 'Studying or practicing with breaks in between sessions leads to better long-term retention than cramming.', 'Journal of Memory and Language'),
-('Exercise and Brain Health', 'Regular physical exercise has been shown to improve cognitive function and protect against cognitive decline.', 'Neuroscience & Biobehavioral Reviews'),
-('Sleep and Memory Consolidation', 'Quality sleep is essential for memory consolidation, the process of converting short-term memories to long-term memories.', 'Nature Neuroscience'),
-('The Mozart Effect Myth', 'Contrary to popular belief, listening to Mozart does not make you smarter. However, music can improve mood and temporarily enhance spatial reasoning.', 'Scientific American'),
-('Neuroplasticity', 'The brain continues to form new neural connections throughout life, allowing for continued learning and adaptation.', 'Annual Review of Psychology')
-ON CONFLICT DO NOTHING;
+  -- Seed neuroscience insights
+  INSERT INTO neuroscience_insights (title, content)
+  VALUES
+    ('Neuroplasticity: Your Brain''s Superpower', 'Neuroplasticity is your brain''s ability to reorganize itself by forming new neural connections. This allows the neurons in your brain to adjust their activities in response to new situations or changes in their environment. Through consistent cognitive training, you can strengthen these neural pathways and enhance your cognitive abilities.'),
+    ('The Science of Memory Formation', 'Memory formation occurs in three main stages: encoding, storage, and retrieval. When you encounter new information, your brain processes it (encoding), maintains it over time (storage), and then accesses it when needed (retrieval). Memory games specifically target and strengthen these processes, particularly in the hippocampus region of your brain.'),
+    ('Attention and the Prefrontal Cortex', 'Your prefrontal cortex plays a crucial role in attention control. This brain region helps you focus on relevant information while filtering out distractions. Attention training exercises strengthen the neural networks in this area, improving your ability to maintain focus and resist distractions in daily life.'),
+    ('Sleep and Cognitive Performance', 'Quality sleep is essential for optimal cognitive function. During sleep, your brain consolidates memories, clears out toxins, and prepares for the next day''s cognitive challenges. Research shows that even a single night of poor sleep can reduce attention, working memory, and decision-making abilities by up to 30%.'),
+    ('The Cognitive Benefits of Exercise', 'Physical exercise doesn''t just benefit your body—it significantly enhances brain function too. Exercise increases blood flow to the brain, promotes the growth of new neurons, and triggers the release of brain-derived neurotrophic factor (BDNF), which supports learning and memory. Just 30 minutes of moderate exercise can immediately boost cognitive performance.')
+  ON CONFLICT DO NOTHING;
+END $$;

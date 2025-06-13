@@ -2,40 +2,32 @@
 
 import { createContext, useContext, useState, useEffect } from "react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
-import type { SupabaseClient } from "@supabase/auth-helpers-nextjs"
+import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/supabase"
 import type React from "react"
 
-type SupabaseContext = {
-  supabase: SupabaseClient<Database>
+type SupabaseContextType = {
+  supabase: SupabaseClient<Database> | null
 }
 
-const Context = createContext<SupabaseContext | undefined>(undefined)
+const SupabaseContext = createContext<SupabaseContextType>({ supabase: null })
 
 export function SupabaseProvider({ children }: { children: React.ReactNode }) {
-  const [supabase] = useState(() => createClientComponentClient<Database>())
+  const [supabaseClient, setSupabaseClient] = useState<SupabaseClient<Database> | null>(null)
 
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
-      // Refresh the page on auth state change to update server data
-      // This is a simple approach; for more complex apps, you might want to use
-      // a more sophisticated state management approach
-    })
-
-    return () => {
-      subscription.unsubscribe()
+    // Only initialize the Supabase client on the client side
+    try {
+      const client = createClientComponentClient<Database>()
+      setSupabaseClient(client)
+    } catch (error) {
+      console.error("Failed to initialize Supabase client:", error)
     }
-  }, [supabase])
+  }, [])
 
-  return <Context.Provider value={{ supabase }}>{children}</Context.Provider>
+  return <SupabaseContext.Provider value={{ supabase: supabaseClient }}>{children}</SupabaseContext.Provider>
 }
 
 export function useSupabase() {
-  const context = useContext(Context)
-  if (context === undefined) {
-    throw new Error("useSupabase must be used within a SupabaseProvider")
-  }
-  return context
+  return useContext(SupabaseContext)
 }

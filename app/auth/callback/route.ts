@@ -16,51 +16,21 @@ export async function GET(request: NextRequest) {
     // Exchange the code for a session
     await supabase.auth.exchangeCodeForSession(code)
 
-    // Check if this is a new user (first sign in with OAuth)
+    // Get the user data
     const {
-      data: { session },
-    } = await supabase.auth.getSession()
+      data: { user },
+    } = await supabase.auth.getUser()
 
-    if (session) {
-      // Check if the user already has a profile
-      const { data: profile } = await supabase.from("profiles").select("*").eq("id", session.user.id).single()
+    // If this is a new user, create a profile
+    if (user) {
+      const { data: existingProfile } = await supabase.from("user_profiles").select().eq("user_id", user.id).single()
 
-      // If no profile exists, create one
-      if (!profile) {
-        // Create user profile
-        await supabase.from("profiles").insert({
-          id: session.user.id,
-          name: session.user.user_metadata.full_name || "",
-          email: session.user.email,
-          created_at: new Date().toISOString(),
-        })
-
-        // Initialize domain scores
-        const domains = [
-          "Memory",
-          "Attention",
-          "Processing Speed",
-          "Problem Solving",
-          "Verbal Fluency",
-          "Spatial Reasoning",
-          "Executive Function",
-        ]
-
-        for (const domain of domains) {
-          await supabase.from("domain_scores").insert({
-            user_id: session.user.id,
-            domain,
-            score: 50, // Starting score
-            last_updated: new Date().toISOString(),
-          })
-        }
-
-        // Initialize streak data
-        await supabase.from("streaks").insert({
-          user_id: session.user.id,
-          current_streak: 0,
-          longest_streak: 0,
-          last_activity: null,
+      if (!existingProfile) {
+        // Create a new profile
+        await supabase.from("user_profiles").insert({
+          user_id: user.id,
+          full_name: user.user_metadata.full_name || "",
+          email: user.email || "",
         })
       }
     }

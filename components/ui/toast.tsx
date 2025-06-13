@@ -96,15 +96,6 @@ const ToastDescription = React.forwardRef<
 ))
 ToastDescription.displayName = ToastPrimitives.Description.displayName
 
-// Add the Toaster component
-function Toaster() {
-  return (
-    <ToastProvider>
-      <ToastViewport />
-    </ToastProvider>
-  )
-}
-
 type ToastProps = React.ComponentPropsWithoutRef<typeof Toast>
 
 type ToastActionElement = React.ReactElement<typeof ToastAction>
@@ -119,5 +110,13 @@ export {
   ToastDescription,
   ToastClose,
   ToastAction,
-  Toaster,
+}
+
+// Export a Toaster component that combines Provider and Viewport
+export function Toaster() {
+  return (
+    <ToastProvider>
+      <ToastViewport />
+    </ToastProvider>
+  )
 }

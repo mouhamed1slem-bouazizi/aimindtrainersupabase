@@ -4,13 +4,13 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import type { Database } from "@/types/supabase"
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   const cookieStore = cookies()
   const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore })
 
   // Sign out the user
   await supabase.auth.signOut()
 
-  // Redirect to login page
+  // Redirect to the login page
   return NextResponse.redirect(new URL("/login", request.url))
 }
