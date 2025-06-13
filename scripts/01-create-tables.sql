@@ -1,174 +1,305 @@
--- Create tables for MindTrainer app
-
--- Users table
-CREATE TABLE IF NOT EXISTS users (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+-- Create profiles table
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT,
   email TEXT UNIQUE NOT NULL,
-  name TEXT NOT NULL,
   avatar_url TEXT,
-  member_since DATE NOT NULL DEFAULT CURRENT_DATE,
-  level INTEGER NOT NULL DEFAULT 1,
-  is_premium BOOLEAN NOT NULL DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  preferences JSONB DEFAULT '{}'::JSONB
 );
 
--- User preferences
-CREATE TABLE IF NOT EXISTS user_preferences (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  reminders BOOLEAN NOT NULL DEFAULT TRUE,
-  morning_reminder TIME NOT NULL DEFAULT '08:00:00',
-  evening_reminder TIME NOT NULL DEFAULT '19:00:00',
-  training_notifications BOOLEAN NOT NULL DEFAULT TRUE,
-  achievement_notifications BOOLEAN NOT NULL DEFAULT TRUE,
-  weekly_report_notifications BOOLEAN NOT NULL DEFAULT TRUE,
-  coach_tip_notifications BOOLEAN NOT NULL DEFAULT TRUE,
-  theme TEXT NOT NULL DEFAULT 'system',
-  language TEXT NOT NULL DEFAULT 'en',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+-- Create cognitive domains table
+CREATE TABLE IF NOT EXISTS cognitive_domains (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  description TEXT,
+  icon TEXT
 );
 
--- Domain scores
-CREATE TABLE IF NOT EXISTS domain_scores (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  domain TEXT NOT NULL,
-  score NUMERIC NOT NULL DEFAULT 0,
-  improvement NUMERIC NOT NULL DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(user_id, domain)
-);
-
--- Training streaks
-CREATE TABLE IF NOT EXISTS training_streaks (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,
-  current_streak INTEGER NOT NULL DEFAULT 0,
-  longest_streak INTEGER NOT NULL DEFAULT 0,
-  last_training_date DATE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Games
+-- Create games table
 CREATE TABLE IF NOT EXISTS games (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
-  description TEXT NOT NULL,
-  domain TEXT NOT NULL,
-  duration INTEGER NOT NULL,
-  difficulty TEXT NOT NULL,
-  image_url TEXT,
-  is_premium BOOLEAN NOT NULL DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  description TEXT,
+  instructions TEXT,
+  thumbnail_url TEXT,
+  difficulty_levels JSONB DEFAULT '[{"name": "Easy", "value": 1}, {"name": "Medium", "value": 2}, {"name": "Hard", "value": 3}]'::JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Game sessions
+-- Create game_domains junction table
+CREATE TABLE IF NOT EXISTS game_domains (
+  game_id INTEGER REFERENCES games(id) ON DELETE CASCADE,
+  domain_id INTEGER REFERENCES cognitive_domains(id) ON DELETE CASCADE,
+  impact_level INTEGER NOT NULL DEFAULT 1, -- 1-5 scale of how much this game impacts this domain
+  PRIMARY KEY (game_id, domain_id)
+);
+
+-- Create brain_regions table
+CREATE TABLE IF NOT EXISTS brain_regions (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  description TEXT
+);
+
+-- Create game_brain_regions junction table
+CREATE TABLE IF NOT EXISTS game_brain_regions (
+  game_id INTEGER REFERENCES games(id) ON DELETE CASCADE,
+  region_id INTEGER REFERENCES brain_regions(id) ON DELETE CASCADE,
+  PRIMARY KEY (game_id, region_id)
+);
+
+-- Create game_sessions table
 CREATE TABLE IF NOT EXISTS game_sessions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
-  score NUMERIC NOT NULL,
-  duration INTEGER NOT NULL,
-  difficulty TEXT NOT NULL,
-  completed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  game_id INTEGER REFERENCES games(id) ON DELETE CASCADE,
+  difficulty_level INTEGER NOT NULL,
+  score INTEGER NOT NULL,
+  duration_seconds INTEGER NOT NULL,
+  completed BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  metadata JSONB DEFAULT '{}'::JSONB
 );
 
--- Training plans
-CREATE TABLE IF NOT EXISTS training_plans (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  start_date DATE NOT NULL,
-  end_date DATE NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+-- Create domain_progress table
+CREATE TABLE IF NOT EXISTS domain_progress (
+  id SERIAL PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  domain_id INTEGER REFERENCES cognitive_domains(id) ON DELETE CASCADE,
+  score INTEGER NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE (user_id, domain_id)
 );
 
--- Training plan days
-CREATE TABLE IF NOT EXISTS training_plan_days (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  training_plan_id UUID NOT NULL REFERENCES training_plans(id) ON DELETE CASCADE,
-  day_number INTEGER NOT NULL,
-  date DATE NOT NULL,
-  completed BOOLEAN NOT NULL DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Training plan games
-CREATE TABLE IF NOT EXISTS training_plan_games (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  training_plan_day_id UUID NOT NULL REFERENCES training_plan_days(id) ON DELETE CASCADE,
-  game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
-  completed BOOLEAN NOT NULL DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Achievements
+-- Create achievements table
 CREATE TABLE IF NOT EXISTS achievements (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
   description TEXT NOT NULL,
-  icon TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  icon TEXT,
+  criteria JSONB NOT NULL
 );
 
--- User achievements
+-- Create user_achievements junction table
 CREATE TABLE IF NOT EXISTS user_achievements (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  achievement_id UUID NOT NULL REFERENCES achievements(id) ON DELETE CASCADE,
-  unlocked_at TIMESTAMP WITH TIME ZONE,
-  progress INTEGER NOT NULL DEFAULT 0,
-  target INTEGER NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(user_id, achievement_id)
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  achievement_id INTEGER REFERENCES achievements(id) ON DELETE CASCADE,
+  unlocked_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  PRIMARY KEY (user_id, achievement_id)
 );
 
--- Notifications
+-- Create training_plans table
+CREATE TABLE IF NOT EXISTS training_plans (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  duration_days INTEGER NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create training_plan_games junction table
+CREATE TABLE IF NOT EXISTS training_plan_games (
+  plan_id INTEGER REFERENCES training_plans(id) ON DELETE CASCADE,
+  game_id INTEGER REFERENCES games(id) ON DELETE CASCADE,
+  day_number INTEGER NOT NULL,
+  PRIMARY KEY (plan_id, game_id, day_number)
+);
+
+-- Create user_training_plans table
+CREATE TABLE IF NOT EXISTS user_training_plans (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  plan_id INTEGER REFERENCES training_plans(id) ON DELETE CASCADE,
+  start_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  current_day INTEGER DEFAULT 1,
+  completed BOOLEAN DEFAULT FALSE,
+  last_activity TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create streaks table
+CREATE TABLE IF NOT EXISTS streaks (
+  user_id UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
+  current_streak INTEGER DEFAULT 0,
+  longest_streak INTEGER DEFAULT 0,
+  last_activity_date DATE DEFAULT CURRENT_DATE
+);
+
+-- Create notifications table
 CREATE TABLE IF NOT EXISTS notifications (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   message TEXT NOT NULL,
   type TEXT NOT NULL,
-  read BOOLEAN NOT NULL DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  read BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Coach messages
-CREATE TABLE IF NOT EXISTS coach_messages (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+-- Create insights table
+CREATE TABLE IF NOT EXISTS insights (
+  id SERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
   content TEXT NOT NULL,
-  type TEXT NOT NULL,
-  read BOOLEAN NOT NULL DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  source TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- User favorites
-CREATE TABLE IF NOT EXISTS user_favorites (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(user_id, game_id)
-);
+-- Create RLS policies
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE game_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE domain_progress ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_achievements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_training_plans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE streaks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
--- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_game_sessions_user_id ON game_sessions(user_id);
-CREATE INDEX IF NOT EXISTS idx_game_sessions_game_id ON game_sessions(game_id);
-CREATE INDEX IF NOT EXISTS idx_domain_scores_user_id ON domain_scores(user_id);
-CREATE INDEX IF NOT EXISTS idx_training_plan_days_training_plan_id ON training_plan_days(training_plan_id);
-CREATE INDEX IF NOT EXISTS idx_training_plan_games_training_plan_day_id ON training_plan_games(training_plan_day_id);
-CREATE INDEX IF NOT EXISTS idx_user_achievements_user_id ON user_achievements(user_id);
-CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
-CREATE INDEX IF NOT EXISTS idx_coach_messages_user_id ON coach_messages(user_id);
+-- Profiles policies
+CREATE POLICY "Users can view their own profile" 
+  ON profiles FOR SELECT 
+  USING (auth.uid() = id);
+
+CREATE POLICY "Users can update their own profile" 
+  ON profiles FOR UPDATE 
+  USING (auth.uid() = id);
+
+-- Game sessions policies
+CREATE POLICY "Users can view their own game sessions" 
+  ON game_sessions FOR SELECT 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own game sessions" 
+  ON game_sessions FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+
+-- Domain progress policies
+CREATE POLICY "Users can view their own domain progress" 
+  ON domain_progress FOR SELECT 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own domain progress" 
+  ON domain_progress FOR UPDATE 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own domain progress" 
+  ON domain_progress FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+
+-- User achievements policies
+CREATE POLICY "Users can view their own achievements" 
+  ON user_achievements FOR SELECT 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own achievements" 
+  ON user_achievements FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+
+-- User training plans policies
+CREATE POLICY "Users can view their own training plans" 
+  ON user_training_plans FOR SELECT 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own training plans" 
+  ON user_training_plans FOR UPDATE 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own training plans" 
+  ON user_training_plans FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+
+-- Streaks policies
+CREATE POLICY "Users can view their own streaks" 
+  ON streaks FOR SELECT 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own streaks" 
+  ON streaks FOR UPDATE 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own streaks" 
+  ON streaks FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+
+-- Notifications policies
+CREATE POLICY "Users can view their own notifications" 
+  ON notifications FOR SELECT 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own notifications" 
+  ON notifications FOR UPDATE 
+  USING (auth.uid() = user_id);
+
+-- Create functions and triggers
+CREATE OR REPLACE FUNCTION update_domain_progress() RETURNS TRIGGER AS $$
+BEGIN
+  -- Update domain progress based on game session results
+  INSERT INTO domain_progress (user_id, domain_id, score)
+  SELECT 
+    NEW.user_id, 
+    gd.domain_id, 
+    COALESCE(
+      (SELECT score FROM domain_progress WHERE user_id = NEW.user_id AND domain_id = gd.domain_id),
+      0
+    ) + (NEW.score * gd.impact_level / 10)
+  FROM game_domains gd
+  WHERE gd.game_id = NEW.game_id
+  ON CONFLICT (user_id, domain_id) 
+  DO UPDATE SET 
+    score = domain_progress.score + (NEW.score * (
+      SELECT impact_level FROM game_domains 
+      WHERE game_id = NEW.game_id AND domain_id = domain_progress.domain_id
+    ) / 10),
+    updated_at = NOW();
+    
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_domain_progress_trigger
+AFTER INSERT ON game_sessions
+FOR EACH ROW
+EXECUTE FUNCTION update_domain_progress();
+
+CREATE OR REPLACE FUNCTION update_streak() RETURNS TRIGGER AS $$
+DECLARE
+  last_date DATE;
+BEGIN
+  -- Get the user's last activity date
+  SELECT last_activity_date INTO last_date FROM streaks WHERE user_id = NEW.user_id;
+  
+  IF NOT FOUND THEN
+    -- First activity, create streak record
+    INSERT INTO streaks (user_id, current_streak, longest_streak, last_activity_date)
+    VALUES (NEW.user_id, 1, 1, CURRENT_DATE);
+  ELSE
+    -- Check if this is a consecutive day
+    IF last_date = CURRENT_DATE THEN
+      -- Already recorded today, do nothing
+      NULL;
+    ELSIF last_date = CURRENT_DATE - INTERVAL '1 day' THEN
+      -- Consecutive day, increment streak
+      UPDATE streaks 
+      SET 
+        current_streak = current_streak + 1,
+        longest_streak = GREATEST(longest_streak, current_streak + 1),
+        last_activity_date = CURRENT_DATE
+      WHERE user_id = NEW.user_id;
+    ELSE
+      -- Streak broken, reset to 1
+      UPDATE streaks 
+      SET 
+        current_streak = 1,
+        last_activity_date = CURRENT_DATE
+      WHERE user_id = NEW.user_id;
+    END IF;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_streak_trigger
+AFTER INSERT ON game_sessions
+FOR EACH ROW
+EXECUTE FUNCTION update_streak();

@@ -1,22 +1,20 @@
-export interface UserProfile {
+export interface User {
   id: string
-  name: string
   email: string
-  avatar?: string
-  memberSince: string
-  level: number
-  isPremium: boolean
-  preferences: {
-    reminders: boolean
-    morningReminder: string
-    eveningReminder: string
-    notifications: {
-      training: boolean
-      achievements: boolean
-      weeklyReports: boolean
-      coachTips: boolean
+  name: string
+  avatar_url?: string
+  created_at: string
+  preferences?: {
+    theme?: "light" | "dark" | "system"
+    notifications?: {
+      email?: boolean
+      push?: boolean
+      reminders?: boolean
     }
-    theme: "light" | "dark" | "system"
-    language: string
+    accessibility?: {
+      reducedMotion?: boolean
+      highContrast?: boolean
+      largeText?: boolean
+    }
   }
 }

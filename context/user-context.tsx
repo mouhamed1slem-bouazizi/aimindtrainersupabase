@@ -1,124 +1,77 @@
 "use client"
 
+import { createContext, useContext, useEffect, useState } from "react"
+import { useSupabase } from "./supabase-context"
+import type { User } from "@/types/user"
 import type React from "react"
 
-import { createContext, useContext, useState, useEffect } from "react"
-import { useSupabase } from "./supabase-context"
-import type { UserProfile } from "@/types/user"
-
-interface UserContextType {
-  user: UserProfile | null
+type UserContextType = {
+  user: User | null
   isLoading: boolean
-  isAuthenticated: boolean
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<{ success: boolean; message: string }>
+  register: (email: string, password: string, name: string) => Promise<{ success: boolean; message: string }>
   logout: () => Promise<void>
-  register: (name: string, email: string, password: string) => Promise<void>
-  updateProfile: (updates: Partial<UserProfile>) => Promise<void>
-  updatePreferences: (preferences: Partial<UserProfile["preferences"]>) => Promise<void>
+  updateProfile: (data: Partial<User>) => Promise<{ success: boolean; message: string }>
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined)
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const { supabase } = useSupabase()
-  const [user, setUser] = useState<UserProfile | null>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Load user data on mount
   useEffect(() => {
-    const loadUser = async () => {
+    if (!supabase) return
+
+    // Check for existing session
+    const checkUser = async () => {
       try {
         setIsLoading(true)
-
-        // Get the current session
         const {
           data: { session },
         } = await supabase.auth.getSession()
 
-        if (!session) {
-          setUser(null)
-          return
+        if (session) {
+          const { data: profile } = await supabase.from("profiles").select("*").eq("id", session.user.id).single()
+
+          if (profile) {
+            setUser({
+              id: session.user.id,
+              email: session.user.email || "",
+              name: profile.name || "",
+              avatar_url: profile.avatar_url,
+              created_at: profile.created_at,
+              preferences: profile.preferences || {},
+            })
+          }
         }
-
-        // Get user profile data
-        const { data: userData, error: userError } = await supabase
-          .from("users")
-          .select("*")
-          .eq("id", session.user.id)
-          .single()
-
-        if (userError || !userData) {
-          console.error("Error loading user data:", userError)
-          setUser(null)
-          return
-        }
-
-        // Get user preferences
-        const { data: preferencesData, error: preferencesError } = await supabase
-          .from("user_preferences")
-          .select("*")
-          .eq("user_id", session.user.id)
-          .single()
-
-        if (preferencesError) {
-          console.error("Error loading user preferences:", preferencesError)
-        }
-
-        // Format user data
-        const formattedUser: UserProfile = {
-          id: userData.id,
-          name: userData.name,
-          email: userData.email,
-          avatar: userData.avatar_url,
-          memberSince: userData.member_since,
-          level: userData.level,
-          isPremium: userData.is_premium,
-          preferences: preferencesData
-            ? {
-                reminders: preferencesData.reminders,
-                morningReminder: preferencesData.morning_reminder,
-                eveningReminder: preferencesData.evening_reminder,
-                notifications: {
-                  training: preferencesData.training_notifications,
-                  achievements: preferencesData.achievement_notifications,
-                  weeklyReports: preferencesData.weekly_report_notifications,
-                  coachTips: preferencesData.coach_tip_notifications,
-                },
-                theme: preferencesData.theme as "light" | "dark" | "system",
-                language: preferencesData.language,
-              }
-            : {
-                reminders: true,
-                morningReminder: "08:00",
-                eveningReminder: "19:00",
-                notifications: {
-                  training: true,
-                  achievements: true,
-                  weeklyReports: true,
-                  coachTips: true,
-                },
-                theme: "system",
-                language: "en",
-              },
-        }
-
-        setUser(formattedUser)
       } catch (error) {
-        console.error("Failed to load user:", error)
-        setUser(null)
+        console.error("Error loading user:", error)
       } finally {
         setIsLoading(false)
       }
     }
 
-    loadUser()
+    checkUser()
 
-    // Subscribe to auth changes
+    // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN") {
-        loadUser()
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        const { data: profile } = await supabase.from("profiles").select("*").eq("id", session.user.id).single()
+
+        if (profile) {
+          setUser({
+            id: session.user.id,
+            email: session.user.email || "",
+            name: profile.name || "",
+            avatar_url: profile.avatar_url,
+            created_at: profile.created_at,
+            preferences: profile.preferences || {},
+          })
+        }
       } else if (event === "SIGNED_OUT") {
         setUser(null)
       }
@@ -130,227 +83,93 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }, [supabase])
 
   const login = async (email: string, password: string) => {
-    setIsLoading(true)
+    if (!supabase) return { success: false, message: "Supabase client not initialized" }
+
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
 
       if (error) {
-        throw error
+        return { success: false, message: error.message }
       }
 
-      // User data will be loaded by the effect hook
+      return { success: true, message: "Logged in successfully" }
     } catch (error) {
-      console.error("Login failed:", error)
-      throw error
-    } finally {
-      setIsLoading(false)
+      console.error("Login error:", error)
+      return { success: false, message: "An unexpected error occurred" }
+    }
+  }
+
+  const register = async (email: string, password: string, name: string) => {
+    if (!supabase) return { success: false, message: "Supabase client not initialized" }
+
+    try {
+      const { error, data } = await supabase.auth.signUp({ email, password })
+
+      if (error) {
+        return { success: false, message: error.message }
+      }
+
+      if (data.user) {
+        // Create a profile for the new user
+        const { error: profileError } = await supabase.from("profiles").insert({
+          id: data.user.id,
+          name,
+          email,
+          created_at: new Date().toISOString(),
+        })
+
+        if (profileError) {
+          return { success: false, message: profileError.message }
+        }
+      }
+
+      return { success: true, message: "Registration successful" }
+    } catch (error) {
+      console.error("Registration error:", error)
+      return { success: false, message: "An unexpected error occurred" }
     }
   }
 
   const logout = async () => {
+    if (!supabase) return
+
     try {
       await supabase.auth.signOut()
       setUser(null)
     } catch (error) {
-      console.error("Logout failed:", error)
-      throw error
+      console.error("Logout error:", error)
     }
   }
 
-  const register = async (name: string, email: string, password: string) => {
-    setIsLoading(true)
-    try {
-      // Sign up with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-      })
-
-      if (authError) {
-        throw authError
-      }
-
-      if (!authData.user) {
-        throw new Error("User creation failed")
-      }
-
-      // Create user profile in the database
-      const { error: profileError } = await supabase.from("users").insert({
-        id: authData.user.id,
-        email,
-        name,
-        member_since: new Date().toISOString().split("T")[0],
-        level: 1,
-        is_premium: false,
-      })
-
-      if (profileError) {
-        throw profileError
-      }
-
-      // Create default user preferences
-      const { error: preferencesError } = await supabase.from("user_preferences").insert({
-        user_id: authData.user.id,
-        reminders: true,
-        morning_reminder: "08:00:00",
-        evening_reminder: "19:00:00",
-        training_notifications: true,
-        achievement_notifications: true,
-        weekly_report_notifications: true,
-        coach_tip_notifications: true,
-        theme: "system",
-        language: "en",
-      })
-
-      if (preferencesError) {
-        throw preferencesError
-      }
-
-      // Initialize domain scores
-      const domains = [
-        "Memory",
-        "Attention",
-        "Processing Speed",
-        "Reflexes",
-        "Executive Control",
-        "Problem-Solving",
-        "Spatial Reasoning",
-        "Language",
-        "Numerical Skills",
-        "Stress Regulation",
-      ]
-
-      for (const domain of domains) {
-        await supabase.from("domain_scores").insert({
-          user_id: authData.user.id,
-          domain,
-          score: 50 + Math.floor(Math.random() * 20), // Random starting score between 50-70
-          improvement: 0,
-        })
-      }
-
-      // Initialize training streak
-      await supabase.from("training_streaks").insert({
-        user_id: authData.user.id,
-        current_streak: 0,
-        longest_streak: 0,
-      })
-
-      // Initialize achievements
-      const { data: achievements } = await supabase.from("achievements").select("id, name")
-
-      if (achievements) {
-        for (const achievement of achievements) {
-          await supabase.from("user_achievements").insert({
-            user_id: authData.user.id,
-            achievement_id: achievement.id,
-            progress: 0,
-            target:
-              achievement.name === "Consistent Learner"
-                ? 7
-                : achievement.name === "Memory Master"
-                  ? 5
-                  : achievement.name === "Attention Expert"
-                    ? 10
-                    : achievement.name === "Brain Trainer"
-                      ? 50
-                      : achievement.name === "All-Rounder"
-                        ? 10
-                        : 20, // Default for others
-          })
-        }
-      }
-
-      // User data will be loaded by the effect hook
-    } catch (error) {
-      console.error("Registration failed:", error)
-      throw error
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const updateProfile = async (updates: Partial<UserProfile>) => {
-    if (!user) return Promise.reject("No user logged in")
+  const updateProfile = async (data: Partial<User>) => {
+    if (!supabase || !user) return { success: false, message: "Not authenticated" }
 
     try {
       const { error } = await supabase
-        .from("users")
+        .from("profiles")
         .update({
-          name: updates.name,
-          email: updates.email,
-          avatar_url: updates.avatar,
+          name: data.name,
+          avatar_url: data.avatar_url,
+          preferences: data.preferences,
         })
         .eq("id", user.id)
 
       if (error) {
-        throw error
+        return { success: false, message: error.message }
       }
 
-      // Update local state
-      setUser((prev) => (prev ? { ...prev, ...updates } : null))
-      return Promise.resolve()
+      // Update local user state
+      setUser({ ...user, ...data })
+
+      return { success: true, message: "Profile updated successfully" }
     } catch (error) {
-      console.error("Failed to update profile:", error)
-      return Promise.reject(error)
-    }
-  }
-
-  const updatePreferences = async (preferences: Partial<UserProfile["preferences"]>) => {
-    if (!user) return Promise.reject("No user logged in")
-
-    try {
-      const { error } = await supabase
-        .from("user_preferences")
-        .update({
-          reminders: preferences.reminders,
-          morning_reminder: preferences.morningReminder,
-          evening_reminder: preferences.eveningReminder,
-          training_notifications: preferences.notifications?.training,
-          achievement_notifications: preferences.notifications?.achievements,
-          weekly_report_notifications: preferences.notifications?.weeklyReports,
-          coach_tip_notifications: preferences.notifications?.coachTips,
-          theme: preferences.theme,
-          language: preferences.language,
-        })
-        .eq("user_id", user.id)
-
-      if (error) {
-        throw error
-      }
-
-      // Update local state
-      setUser((prev) =>
-        prev
-          ? {
-              ...prev,
-              preferences: { ...prev.preferences, ...preferences },
-            }
-          : null,
-      )
-      return Promise.resolve()
-    } catch (error) {
-      console.error("Failed to update preferences:", error)
-      return Promise.reject(error)
+      console.error("Profile update error:", error)
+      return { success: false, message: "An unexpected error occurred" }
     }
   }
 
   return (
-    <UserContext.Provider
-      value={{
-        user,
-        isLoading,
-        isAuthenticated: !!user,
-        login,
-        logout,
-        register,
-        updateProfile,
-        updatePreferences,
-      }}
-    >
+    <UserContext.Provider value={{ user, isLoading, login, register, logout, updateProfile }}>
       {children}
     </UserContext.Provider>
   )

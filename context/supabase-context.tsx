@@ -7,27 +7,34 @@ import type { Database } from "@/types/supabase"
 import type React from "react"
 
 type SupabaseContext = {
-  supabase: SupabaseClient<Database>
+  supabase: SupabaseClient<Database> | null
 }
 
 const Context = createContext<SupabaseContext | undefined>(undefined)
 
 export function SupabaseProvider({ children }: { children: React.ReactNode }) {
-  const [supabase] = useState(() => createBrowserClient())
+  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null)
 
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
-      // Refresh the page on auth state change to update server components
-      // This is a simple approach - in a more complex app, you might want to use
-      // a more sophisticated approach to avoid full page refreshes
-    })
+    // Only initialize the Supabase client on the client side
+    // This prevents issues during build/prerendering
+    try {
+      const client = createBrowserClient()
+      setSupabase(client)
 
-    return () => {
-      subscription.unsubscribe()
+      const {
+        data: { subscription },
+      } = client.auth.onAuthStateChange(() => {
+        // Refresh the page on auth state change to update server components
+      })
+
+      return () => {
+        subscription.unsubscribe()
+      }
+    } catch (error) {
+      console.error("Failed to initialize Supabase client:", error)
     }
-  }, [supabase])
+  }, [])
 
   return <Context.Provider value={{ supabase }}>{children}</Context.Provider>
 }
