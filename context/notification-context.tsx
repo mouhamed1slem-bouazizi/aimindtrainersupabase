@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { createContext, useContext, useState, useEffect } from "react"
 
 interface Notification {
@@ -116,4 +115,19 @@ export function useNotifications() {
     throw new Error("useNotifications must be used within a NotificationProvider")
   }
   return context
+}
+
+// Create a safe version of the hook for components that might render outside the provider
+export function useSafeNotifications() {
+  const context = useContext(NotificationContext)
+  return (
+    context || {
+      notifications: [],
+      unreadCount: 0,
+      addNotification: () => {},
+      markAsRead: () => {},
+      markAllAsRead: () => {},
+      clearNotification: () => {},
+    }
+  )
 }

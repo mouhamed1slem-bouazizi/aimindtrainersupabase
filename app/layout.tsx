@@ -1,31 +1,20 @@
 import type React from "react"
-import { Providers } from "./providers"
-import { BottomNavigation } from "@/components/navigation/bottom-navigation"
-import { StatusBar } from "@/components/ui/status-bar"
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
+import "./globals.css"
+
+const inter = Inter({ subsets: ["latin"] })
+
+export const metadata: Metadata = {
+  title: "MindTrainer",
+  description: "Train your brain with personalized cognitive exercises",
+    generator: 'v0.dev'
+}
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode
-}) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="bg-background min-h-screen">
-        <Providers>
-          <StatusBar />
-          <main className="flex flex-col h-screen">
-            <div className="flex-1 overflow-auto pb-16">{children}</div>
-            <BottomNavigation />
-          </main>
-        </Providers>
-      </body>
-    </html>
-  )
+}>) {
+  return children
 }
-
-
-import './globals.css'
-
-export const metadata = {
-      generator: 'v0.dev'
-    };

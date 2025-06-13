@@ -3,7 +3,7 @@
 import { Home, Brain, BarChart2, User, Bell } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { useNotifications } from "@/context/notification-context"
+import { useSafeNotifications } from "@/context/notification-context"
 import { Badge } from "@/components/ui/badge"
 
 const navItems = [
@@ -38,7 +38,7 @@ const navItems = [
 export function BottomNavigation() {
   const pathname = usePathname()
   const router = useRouter()
-  const { unreadCount } = useNotifications()
+  const { unreadCount } = useSafeNotifications()
 
   return (
     <div className="fixed bottom-0 left-0 right-0 border-t bg-background z-10">
