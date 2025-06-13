@@ -1,40 +1,33 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState } from "react"
-import { createBrowserClient } from "@/lib/supabase"
-import type { SupabaseClient } from "@supabase/supabase-js"
+import { createContext, useContext, useState, useEffect } from "react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import type { SupabaseClient } from "@supabase/auth-helpers-nextjs"
 import type { Database } from "@/types/supabase"
 import type React from "react"
 
 type SupabaseContext = {
-  supabase: SupabaseClient<Database> | null
+  supabase: SupabaseClient<Database>
 }
 
 const Context = createContext<SupabaseContext | undefined>(undefined)
 
 export function SupabaseProvider({ children }: { children: React.ReactNode }) {
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null)
+  const [supabase] = useState(() => createClientComponentClient<Database>())
 
   useEffect(() => {
-    // Only initialize the Supabase client on the client side
-    // This prevents issues during build/prerendering
-    try {
-      const client = createBrowserClient()
-      setSupabase(client)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      // Refresh the page on auth state change to update server data
+      // This is a simple approach; for more complex apps, you might want to use
+      // a more sophisticated state management approach
+    })
 
-      const {
-        data: { subscription },
-      } = client.auth.onAuthStateChange(() => {
-        // Refresh the page on auth state change to update server components
-      })
-
-      return () => {
-        subscription.unsubscribe()
-      }
-    } catch (error) {
-      console.error("Failed to initialize Supabase client:", error)
+    return () => {
+      subscription.unsubscribe()
     }
-  }, [])
+  }, [supabase])
 
   return <Context.Provider value={{ supabase }}>{children}</Context.Provider>
 }
