@@ -6,25 +6,16 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Bell, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useUser } from "@/context/user-context"
+import { useSafeUser } from "@/context/user-context"
 import { toast } from "@/components/ui/use-toast"
 
 export function NotificationSettings() {
   const [mounted, setMounted] = useState(false)
-  const [user, setUser] = useState<any>(null)
-  const [updatePreferences, setUpdatePreferences] = useState<((prefs: any) => Promise<void>) | null>(null)
-  const userContext = useUser()
+  const { user, updatePreferences } = useSafeUser()
 
   useEffect(() => {
     setMounted(true)
   }, [])
-
-  useEffect(() => {
-    if (mounted) {
-      setUser(userContext.user)
-      setUpdatePreferences(() => userContext.updatePreferences)
-    }
-  }, [mounted])
 
   const [preferences, setPreferences] = useState({
     reminders: false,
@@ -91,13 +82,11 @@ export function NotificationSettings() {
 
   const handleSave = async () => {
     try {
-      if (updatePreferences) {
-        await updatePreferences(preferences)
-        toast({
-          title: "Settings updated",
-          description: "Your notification preferences have been saved.",
-        })
-      }
+      await updatePreferences(preferences)
+      toast({
+        title: "Settings updated",
+        description: "Your notification preferences have been saved.",
+      })
     } catch (error) {
       toast({
         title: "Error",

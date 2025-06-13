@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Brain, LogOut } from "lucide-react"
-import { useUser } from "@/context/user-context"
+import { useSafeUser } from "@/context/user-context"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ProfileSettings } from "@/components/profile/profile-settings"
 import { NotificationSettings } from "@/components/profile/notification-settings"
@@ -15,34 +15,8 @@ import { SubscriptionSettings } from "@/components/profile/subscription-settings
 // Prevent static generation
 export const dynamic = "force-dynamic"
 
-export default function ProfilePage() {
-  const [mounted, setMounted] = useState(false)
-  const [user, setUser] = useState<any>(null)
-  const [logout, setLogout] = useState<(() => void) | null>(null)
-  const userContext = useUser()
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  useEffect(() => {
-    if (mounted) {
-      setUser(userContext.user)
-      setLogout(() => userContext.logout)
-    }
-  }, [mounted, userContext])
-
-  // Show loading state until mounted
-  if (!mounted) {
-    return (
-      <div className="container px-4 py-6 space-y-6">
-        <div className="h-8 w-48 bg-muted rounded animate-pulse"></div>
-        <div className="h-24 bg-muted rounded animate-pulse"></div>
-        <div className="h-10 w-full bg-muted rounded animate-pulse"></div>
-        <div className="h-64 bg-muted rounded animate-pulse"></div>
-      </div>
-    )
-  }
+function ProfileClient() {
+  const { user, logout } = useSafeUser()
 
   if (!user) {
     return (
@@ -106,10 +80,32 @@ export default function ProfilePage() {
         </TabsContent>
       </Tabs>
 
-      <Button variant="destructive" className="w-full" onClick={logout || (() => {})}>
+      <Button variant="destructive" className="w-full" onClick={logout}>
         <LogOut className="h-4 w-4 mr-2" />
         Sign Out
       </Button>
     </div>
   )
+}
+
+export default function ProfilePage() {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Show loading state until mounted
+  if (!mounted) {
+    return (
+      <div className="container px-4 py-6 space-y-6">
+        <div className="h-8 w-48 bg-muted rounded animate-pulse"></div>
+        <div className="h-24 bg-muted rounded animate-pulse"></div>
+        <div className="h-10 w-full bg-muted rounded animate-pulse"></div>
+        <div className="h-64 bg-muted rounded animate-pulse"></div>
+      </div>
+    )
+  }
+
+  return <ProfileClient />
 }

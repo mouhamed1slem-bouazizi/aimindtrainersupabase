@@ -6,28 +6,17 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { User, Lock, Moon } from "lucide-react"
-import { useUser } from "@/context/user-context"
+import { useSafeUser } from "@/context/user-context"
 import { toast } from "@/components/ui/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export function ProfileSettings() {
-  const userContext = useUser()
+  const { user, updateProfile, updatePreferences } = useSafeUser()
   const [mounted, setMounted] = useState(false)
-  const [user, setUser] = useState<any>(null)
-  const [updateProfile, setUpdateProfile] = useState<((profile: any) => Promise<void>) | null>(null)
-  const [updatePreferences, setUpdatePreferences] = useState<((prefs: any) => Promise<void>) | null>(null)
 
   useEffect(() => {
     setMounted(true)
   }, [])
-
-  useEffect(() => {
-    if (mounted) {
-      setUser(userContext.user)
-      setUpdateProfile(() => userContext.updateProfile)
-      setUpdatePreferences(() => userContext.updatePreferences)
-    }
-  }, [mounted])
 
   const [profile, setProfile] = useState({
     name: "",
@@ -69,13 +58,11 @@ export function ProfileSettings() {
 
   const handleSaveProfile = async () => {
     try {
-      if (updateProfile) {
-        await updateProfile(profile)
-        toast({
-          title: "Profile updated",
-          description: "Your profile information has been saved.",
-        })
-      }
+      await updateProfile(profile)
+      toast({
+        title: "Profile updated",
+        description: "Your profile information has been saved.",
+      })
     } catch (error) {
       toast({
         title: "Error",
@@ -87,13 +74,11 @@ export function ProfileSettings() {
 
   const handleSavePreferences = async () => {
     try {
-      if (updatePreferences) {
-        await updatePreferences({ theme: theme as any, language })
-        toast({
-          title: "Preferences updated",
-          description: "Your app preferences have been saved.",
-        })
-      }
+      await updatePreferences({ theme: theme as any, language })
+      toast({
+        title: "Preferences updated",
+        description: "Your app preferences have been saved.",
+      })
     } catch (error) {
       toast({
         title: "Error",
