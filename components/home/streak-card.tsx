@@ -1,13 +1,13 @@
 "use client"
 
-import { useTraining } from "@/context/training-context"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Trophy } from "lucide-react"
+import { useSafeTraining } from "@/hooks/use-safe-training"
 
 export function StreakCard() {
-  const { currentStreak, completedGames, totalGames } = useTraining()
-  const progressPercentage = (completedGames / totalGames) * 100
+  const { currentStreak, completedGames, totalGames } = useSafeTraining()
+  const progressPercentage = totalGames > 0 ? (completedGames / totalGames) * 100 : 0
 
   return (
     <Card>
