@@ -1,6 +1,6 @@
 "use client"
 
-import { useNotifications } from "@/context/notification-context"
+import { useSafeNotifications } from "@/context/notification-context"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Bell, Calendar, Award, MessageSquare, Zap, Trash2 } from "lucide-react"
@@ -13,7 +13,6 @@ export const dynamic = "force-dynamic"
 export default function NotificationsPage() {
   const [mounted, setMounted] = useState(false)
   const [filter, setFilter] = useState<string | null>(null)
-  const notificationContext = useNotifications()
 
   useEffect(() => {
     setMounted(true)
@@ -23,33 +22,18 @@ export default function NotificationsPage() {
     return <Loading />
   }
 
-  return (
-    <NotificationsClient
-      filter={filter}
-      setFilter={setFilter}
-      notifications={notificationContext.notifications}
-      markAsRead={notificationContext.markAsRead}
-      markAllAsRead={notificationContext.markAllAsRead}
-      clearNotification={notificationContext.clearNotification}
-    />
-  )
+  return <NotificationsClient filter={filter} setFilter={setFilter} />
 }
 
 function NotificationsClient({
   filter,
   setFilter,
-  notifications,
-  markAsRead,
-  markAllAsRead,
-  clearNotification,
 }: {
   filter: string | null
   setFilter: (filter: string | null) => void
-  notifications: any[]
-  markAsRead: (id: string) => void
-  markAllAsRead: () => void
-  clearNotification: (id: string) => void
 }) {
+  const { notifications, markAsRead, markAllAsRead, clearNotification } = useSafeNotifications()
+
   const filteredNotifications = filter ? notifications.filter((n) => n.type === filter) : notifications
 
   const getIcon = (type: string) => {
