@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   experimental: {
-    serverActions: true,
+    // Remove the incorrect serverActions boolean
   },
   eslint: {
     ignoreDuringBuilds: true,

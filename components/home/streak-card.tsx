@@ -3,10 +3,10 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Trophy } from "lucide-react"
-import { useSafeTraining } from "@/hooks/use-safe-training"
+import { useTraining } from "@/context/training-context"
 
 export function StreakCard() {
-  const { currentStreak, completedGames, totalGames } = useSafeTraining()
+  const { currentStreak, completedGames, totalGames } = useTraining()
   const progressPercentage = totalGames > 0 ? (completedGames / totalGames) * 100 : 0
 
   return (
