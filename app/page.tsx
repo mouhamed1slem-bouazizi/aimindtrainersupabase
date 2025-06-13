@@ -1,18 +1,20 @@
-import { DailyTraining } from "@/components/home/daily-training"
-import { StreakCard } from "@/components/home/streak-card"
-import { NeuroscienceInsight } from "@/components/home/neuroscience-insight"
-import { AiCoach } from "@/components/home/ai-coach"
-import { ChallengeCard } from "@/components/home/challenge-card"
+import dynamic from "next/dynamic"
+import { Suspense } from "react"
+import Loading from "./loading"
+
+// Disable SSR for the home client component
+const HomeClient = dynamic(() => import("./home-client"), {
+  ssr: false,
+  loading: () => <Loading />,
+})
+
+// Prevent static generation
+const preventStaticGeneration = "force-dynamic"
 
 export default function Home() {
   return (
-    <div className="container px-4 py-6 space-y-6">
-      <h1 className="text-2xl font-bold">MindTrainer</h1>
-      <StreakCard />
-      <DailyTraining />
-      <ChallengeCard />
-      <NeuroscienceInsight />
-      <AiCoach />
-    </div>
+    <Suspense fallback={<Loading />}>
+      <HomeClient />
+    </Suspense>
   )
 }

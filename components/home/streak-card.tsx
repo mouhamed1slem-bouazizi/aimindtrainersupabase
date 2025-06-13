@@ -1,35 +1,57 @@
 "use client"
 
 import { Card, CardContent } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { Trophy } from "lucide-react"
 import { useTraining } from "@/context/training-context"
+import { useState, useEffect } from "react"
 
 export function StreakCard() {
-  const { currentStreak, completedGames, totalGames } = useTraining()
-  const progressPercentage = totalGames > 0 ? (completedGames / totalGames) * 100 : 0
+  const { streak, setStreak } = useTraining() // Declare setStreak here
+  const [mounted, setMounted] = useState(false)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    try {
+      setStreak(streak)
+    } catch (e) {
+      console.error("Error accessing training context:", e)
+      setError(true)
+    }
+  }, [streak])
+
+  // Don't render anything on the server
+  if (!mounted) return null
+
+  // Show fallback UI if there's an error
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-medium">Current Streak</h3>
+              <p className="text-muted-foreground">Loading streak data...</p>
+            </div>
+            <div className="text-3xl font-bold">-</div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card>
       <CardContent className="p-4">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center">
-            <div className="bg-yellow-500/10 p-2 rounded-full mr-3">
-              <Trophy className="h-5 w-5 text-yellow-500" />
-            </div>
-            <div>
-              <h3 className="text-lg font-medium">Current Streak</h3>
-              <p className="text-3xl font-bold">{currentStreak} days</p>
-            </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-medium">Current Streak</h3>
+            <p className="text-muted-foreground">Keep it going!</p>
           </div>
-          <div className="text-right">
-            <h3 className="text-lg font-medium">Weekly Progress</h3>
-            <p className="text-sm text-muted-foreground">
-              {completedGames}/{totalGames} games
-            </p>
-          </div>
+          <div className="text-3xl font-bold">{streak} days</div>
         </div>
-        <Progress value={progressPercentage} className="h-2 mt-4" />
       </CardContent>
     </Card>
   )
